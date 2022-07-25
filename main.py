@@ -85,43 +85,10 @@ def auto_cogserr_unload(key: str = None):
 async def on_ready():
     print('Бот запустился')
 
-@bot.command()
-async def cload(ctx, extension):
-    if ctx.author.id == 318805947084439552:
-        auto_cogserr_load(extension)
-        await ctx.send(f"Cogs {extension} загружен")
-    else:
-        await ctx.send("!ОТКАЗАНО!")
-    await ctx.channel.purge(limit=2)
-
-
-@bot.command()
-async def cunload(ctx, extension):
-    if ctx.author.id == 318805947084439552:
-        auto_cogserr_unload(extension)
-        await ctx.send(f"Cogs {extension} отгружен")
-    else:
-        await ctx.send("!ОТКАЗАНО!")
-    await ctx.channel.purge(limit=2)
-
-
-@bot.command()
-async def cre(ctx, extension: str = None):
-    if ctx.author.id == 318805947084439552:
-        auto_cogserr_unload(extension)
-        auto_cogserr_load(extension)
-        if extension != None:
-            await ctx.send(f"Cogs {extension} перезагружен")
-        else:
-            await ctx.send(f"Cogsы перезагружены")
-    else:
-        await ctx.send("!ОТКАЗАНО!")
-    await ctx.channel.purge(limit=2)
-
 auto_cogserr_load()
 print(cogs_listt)
 
-@bot.slash_command(guild_ids = [485839030286549002],name ="cre", description="cogs")
+@bot.slash_command(guild_ids = [1001238238897373225],name ="cre", description="cogs")
 @default_permissions(administrator=True)
 @option("cog", description="cog", choices=cogs_listt)
 async def slash__cre(ctx,cog: str):
