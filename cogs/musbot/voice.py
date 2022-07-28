@@ -63,8 +63,9 @@ async def play_global(voice_client, interaction):
     next_play = json.loads(all_get['next_play'])
     if not next_play:
         return
-
-    back_play.insert(0, now_play.copy())
+    
+    if now_play:
+        back_play.insert(0, now_play.copy())
     if len(back_play) > 5:
         back_play.pop(5)
 
