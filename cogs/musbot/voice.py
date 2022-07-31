@@ -117,7 +117,7 @@ class BVoice(commands.Cog):
                     return ()
 
     @commands.slash_command(name="m-play", description="Добавить мэшапы в очередь")
-    @option("search", description="Введите название или автора мэшапа")
+    @option("search", description="Введите название или автора мэшапа, либо ссылку на плейлист")
     async def _mashup_play(self, interaction, search: str):
         playlist_id = PLAYLIST_LINK_REGEX.get_group(search, 1)
         view = None
@@ -125,10 +125,6 @@ class BVoice(commands.Cog):
             response = requests.get(f"https://smashup.ru/playlist/get?id={playlist_id}", cookies=COOKIES).json()
 
             mashups = response[0]['mashups']
-            emb = classic_embed([discord.Embed(title=f"{response[0]['owner']} - {response[0]['name']}",
-                                               description=f"Добавлено {len(response)} "
-                                                           f"{get_noun_ending(len(response), ['мэшап', 'мэшапа', 'мэшапов'])}"
-                                                           f" в очередь"), [], [], [], []])
 
             check = voice_check(interaction, discord.utils.get(self.bot.voice_clients, guild=interaction.guild))
             if check[0] == "respond":
@@ -152,8 +148,14 @@ class BVoice(commands.Cog):
                     response1 = requests.get(f"https://smashup.ru/mashup/get?id={','.join(map(str, mashups))}", cookies=COOKIES).json()
 
                     for i in response1:
-                        mashup_list.append([int(i['id']), f"{i['name']} - {i['owner']}", interaction.user.id])
-                    emb = classic_embed( [discord.Embed(description="Мэшапы добавлены"),[], [], [], []])
+                        mashup_list.append([int(i['id']), f"({i['name']})[https://smashup.ru/?mashup={i['id']}] - "
+                                                          f"({i['owner']})[https://smashup.ru/?profile={i['owner'].replace(' ', '%20')}]",
+                                            interaction.user.id])
+
+                    emb = classic_embed([discord.Embed(title=f"{response[0]['owner']} - {response[0]['name']}",
+                                                       description=f"Добавлено {len(response)} "
+                                                                   f"{get_noun_ending(len(response), ['мэшап', 'мэшапа', 'мэшапов'])}"
+                                                                   f" в очередь"), [], [], [], []])
 
                     await interaction.channel.send(embeds=[
                         discord.Embed(title=f" {interaction.user.display_name} добавляет в очередь",
@@ -380,7 +382,10 @@ class BVoice(commands.Cog):
 
                     for i in response:
                         add_list += f" **{i['name']}** - {i['owner']} ,"
-                        mashup_list.append([int(i['id']), f"{i['name']} - {i['owner']}", interaction.user.id])
+                        mashup_list.append([int(i['id']), f"({i['name']})[https://smashup.ru/?mashup={i['id']}] - "
+                                                          f"({i['owner']})[https://smashup.ru/?profile={i['owner'].replace(' ', '%20')}]",
+                                            interaction.user.id])
+
                     answer = "Мэшапы добавлены"
 
                     await interaction.channel.send(embeds=[
