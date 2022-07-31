@@ -5,6 +5,7 @@ from discord.commands import option
 import requests
 from sqlfunc import sql_py
 from discord.ui import View, Select
+from regexs import *
 
 
 def voice_check(interaction, voice_client):
@@ -54,6 +55,7 @@ stop_check_lister = []
 
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+COOKIES = {'token': '7f5bc728-1019-4ca0-ac89-de77c2d868f1'}
 
 
 async def play_global(voice_client, interaction):
@@ -116,42 +118,83 @@ class BVoice(commands.Cog):
 
     @commands.slash_command(name="m-play", description="Добавить мэшапы в очередь")
     @option("search", description="Введите название или автора мэшапа")
-    async def _mashup_play_voice(self, interaction, search: str):
+    async def _mashup_play(self, interaction, search: str):
+        playlist_id = PLAYLIST_LINK_REGEX.get_group(search, 1)
         view = None
-        cookies = {'token': '7f5bc728-1019-4ca0-ac89-de77c2d868f1'}
-        response = requests.get(f"https://smashup.ru/search/mashups?query={search}", cookies=cookies).json()
+        if playlist_id is not None:
+            response = requests.get(f"https://smashup.ru/playlist/get?id={playlist_id}", cookies=COOKIES).json()
 
-        if not response:
-            answer = "Ничего не найдено"
-            emb = classic_embed([discord.Embed(description=answer), [], [], [], []])
-        else:
-            rl = 0
-            mlist = []
-            mlist_fields = []
-            for i in response:
-                if rl > 8:
-                    continue
+            mashups = response[0]['mashups']
+            emb = classic_embed([discord.Embed(title=f"{response[0]['owner']} - {response[0]['name']}",
+                                               description=f"Добавлено {len(response)} "
+                                                           f"{get_noun_ending(len(response), ['мэшап', 'мэшапа', 'мэшапов'])}"
+                                                           f" в очередь"), [], [], [], []])
+
+            check = voice_check(interaction, discord.utils.get(self.bot.voice_clients, guild=interaction.guild))
+            if check[0] == "respond":
+                emb = classic_embed([discord.Embed(description=check[1]),
+                                     [], [], [], []])
+            elif check[0] == "voice":
+                bad = False
+
+                if check[1] is None:
+                    try:
+                        voice_client = await interaction.user.voice.channel.connect()
+                    except:
+                        emb = classic_embed([discord.Embed(description="Боту не хватает прав для подключения к вашему каналу!"),
+                                             [], [], [], []])
+                        bad = True
                 else:
-                    rl += 1
-                    mlist.append(
-                        discord.SelectOption(label=f"{i['name']}", description=f"{i['owner']}", value=f"{i['id']}"))
-                    mlist_fields.append(discord.EmbedField(name=f"{i['name']}",
-                                                           value=f"[{i['owner']}](https://smashup.ru/?profile={i['owner']})\n"
-                                                                 f"`{i['streams']}💿` `{i['likes']}❤️`",
-                                                           inline=True))
+                    voice_client = check[1]
 
-            emb = classic_embed([discord.Embed(title=f"ТОП-{rl} поиска",
-                                               description=f" Всего {get_noun_ending(len(response), ['был найден', 'было найдено', 'было найдено'])} "
-                                                           f"{len(response)} {get_noun_ending(len(response), ['мэшап', 'мэшапа', 'мэшапов'])}",
-                                               fields=mlist_fields), [], [], [], []])
-            selector = Select(
-                custom_id="Choose_mashup",
-                placeholder="Выберите нужный вам мэшап",
-                min_values=1,
-                max_values=len(mlist),
-                options=mlist)
-            view = View()
-            view.add_item(selector)
+                if not bad:
+                    mashup_list = []
+
+                    response1 = requests.get(f"https://smashup.ru/mashups/get?id={','.join(map(str, mashups))}", cookies=COOKIES).json()
+
+                    for i in response1:
+                        mashup_list.append([int(i['id']), f"{i['name']} - {i['owner']}", interaction.user.id])
+                    emb = classic_embed( [discord.Embed(description="Мэшапы добавлены"),[], [], [], []])
+
+                    await interaction.channel.send(embeds=[
+                        discord.Embed(title=f" {interaction.user.display_name} добавляет в очередь",
+                                      description=f"Плейлист **{response[0]['name']}** - {response[0]['owner']}")], delete_after=20)
+                    await add_to_play(voice_client, interaction, mashup_list)
+
+        else:
+            response = requests.get(f"https://smashup.ru/search/mashups?query={search}", cookies=COOKIES).json()
+
+            if not response:
+                answer = "Ничего не найдено"
+                emb = classic_embed([discord.Embed(description=answer), [], [], [], []])
+            else:
+                rl = 0
+                mlist = []
+                mlist_fields = []
+                for i in response:
+                    if rl > 8:
+                        continue
+                    else:
+                        rl += 1
+                        mlist.append(
+                            discord.SelectOption(label=f"{i['name']}", description=f"{i['owner']}", value=f"{i['id']}"))
+                        mlist_fields.append(discord.EmbedField(name=f"{i['name']}",
+                                                               value=f"[{i['owner']}](https://smashup.ru/?profile={i['owner'].replace(' ', '%20')})\n"
+                                                                     f"`{i['streams']}💿` `{i['likes']}❤️`",
+                                                               inline=True))
+
+                emb = classic_embed([discord.Embed(title=f"ТОП-{rl} поиска",
+                                                   description=f" Всего {get_noun_ending(len(response), ['был найден', 'было найдено', 'было найдено'])} "
+                                                               f"{len(response)} {get_noun_ending(len(response), ['мэшап', 'мэшапа', 'мэшапов'])}",
+                                                   fields=mlist_fields), [], [], [], []])
+                selector = Select(
+                    custom_id="Choose_mashup",
+                    placeholder="Выберите нужный вам мэшап",
+                    min_values=1,
+                    max_values=len(mlist),
+                    options=mlist)
+                view = View()
+                view.add_item(selector)
 
         return await interaction.respond(embeds=[emb], view=view, ephemeral=True)
 
@@ -190,13 +233,12 @@ class BVoice(commands.Cog):
                     []])
             return await interaction.respond(embeds=[emb], ephemeral=True)
 
-        cookies = {'token': '7f5bc728-1019-4ca0-ac89-de77c2d868f1'}
-        response = requests.get(f"https://smashup.ru/mashup/get?id={now_play[0]}", cookies=cookies).json()[0]
+        response = requests.get(f"https://smashup.ru/mashup/get?id={now_play[0]}", cookies=COOKIES).json()[0]
 
         if back_play:
             back_list = ""
             for i in back_play:
-                back_list += f"•{i[1]}\n"
+                back_list += f"• {i[1]}\n"
         else:
             back_list = "—"
 
@@ -205,11 +247,11 @@ class BVoice(commands.Cog):
             c_next = 0
             for i in next_play:
                 c_next += 1
-                next_list += f"•{i[1]}\n"
+                next_list += f"• {i[1]}\n"
                 if 5 == c_next:
                     break
             if len(next_play) > 5:
-                next_list += f"и еще {len(next_play) - 5}"
+                next_list += f"*и еще {len(next_play) - 5}*"
         else:
             next_list = "—"
 
@@ -234,8 +276,8 @@ class BVoice(commands.Cog):
 
         return await interaction.respond(embeds=[emb], ephemeral=True)
 
-    @commands.slash_command(name="m-clear", description="Очистить очередь")
-    async def _mashup_clear(self, interaction):
+    @commands.slash_command(name="m-stop", description="Очистить очередь и выйти")
+    async def _mashup_stop(self, interaction):
         check = voice_check(interaction, discord.utils.get(self.bot.voice_clients, guild=interaction.guild))
 
         if check[0] == "respond":
@@ -286,7 +328,6 @@ class BVoice(commands.Cog):
         emb = classic_embed([discord.Embed(description=answer), [], [], [], []])
         return await interaction.respond(embeds=[emb], ephemeral=True)
 
-
     @commands.slash_command(name="m-resume", description="Продолжить проигрывание")
     async def _mashup_resume(self, interaction):
         check = voice_check(interaction, discord.utils.get(self.bot.voice_clients, guild=interaction.guild))
@@ -333,15 +374,14 @@ class BVoice(commands.Cog):
                     for i in interaction.data['values']:
                         add_list += f"{i},"
 
-                    cookies = {'token': '7f5bc728-1019-4ca0-ac89-de77c2d868f1'}
-                    response = requests.get(f"https://smashup.ru/mashup/get?id={add_list}", cookies=cookies).json()
+                    response = requests.get(f"https://smashup.ru/mashup/get?id={add_list}", cookies=COOKIES).json()
 
                     add_list = ""
                     mashup_list = []
 
                     for i in response:
                         add_list += f" **{i['name']}** - {i['owner']} ,"
-                        mashup_list.append([int(i['id']), f"{i['name']}-{i['owner']}", interaction.user.id])
+                        mashup_list.append([int(i['id']), f"{i['name']} - {i['owner']}", interaction.user.id])
                     answer = "Мэшапы добавлены"
 
                     await interaction.channel.send(embeds=[
