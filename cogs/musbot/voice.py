@@ -149,8 +149,7 @@ class BVoice(commands.Cog):
 
                 if not bad:
                     mashup_list = []
-
-                    response1 = requests.get(f"https://smashup.ru/mashups/get?id={','.join(map(str, mashups))}", cookies=COOKIES).json()
+                    response1 = requests.get(f"https://smashup.ru/mashup/get?id={','.join(map(str, mashups))}", cookies=COOKIES).json()
 
                     for i in response1:
                         mashup_list.append([int(i['id']), f"{i['name']} - {i['owner']}", interaction.user.id])
