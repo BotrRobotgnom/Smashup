@@ -148,8 +148,8 @@ class BVoice(commands.Cog):
                     response1 = requests.get(f"https://smashup.ru/mashup/get?id={','.join(map(str, mashups))}", cookies=COOKIES).json()
 
                     for i in response1:
-                        mashup_list.append([int(i['id']), f"({i['name']})[https://smashup.ru/?mashup={i['id']}] - "
-                                                          f"({i['owner']})[https://smashup.ru/?profile={i['owner'].replace(' ', '%20')}]",
+                        mashup_list.append([int(i['id']), f"[{i['name']}](https://smashup.ru/?mashup={i['id']}) - "
+                                                          f"[{i['owner']}](https://smashup.ru/?profile={i['owner'].replace(' ', '%20')})",
                                             interaction.user.id])
 
                     emb = classic_embed([discord.Embed(title=f"{response[0]['owner']} - {response[0]['name']}",
@@ -382,8 +382,8 @@ class BVoice(commands.Cog):
 
                     for i in response:
                         add_list += f" **{i['name']}** - {i['owner']} ,"
-                        mashup_list.append([int(i['id']), f"({i['name']})[https://smashup.ru/?mashup={i['id']}] - "
-                                                          f"({i['owner']})[https://smashup.ru/?profile={i['owner'].replace(' ', '%20')}]",
+                        mashup_list.append([int(i['id']), f"[{i['name']}](https://smashup.ru/?mashup={i['id']}) - "
+                                                          f"[{i['owner']}](https://smashup.ru/?profile={i['owner'].replace(' ', '%20')})",
                                             interaction.user.id])
 
                     answer = "Мэшапы добавлены"
